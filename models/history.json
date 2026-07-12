@@ -1,0 +1,438 @@
+[
+  {
+    "trained_at": "2026-07-12T19:11:20",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T18:49:17",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T18:44:07",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T18:41:52",
+    "best_model": "LogisticRegression",
+    "accuracy": 0.8492,
+    "roc_auc": 0.8805,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.8492
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8324
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T18:35:41",
+    "best_model": "LogisticRegression",
+    "accuracy": 0.8492,
+    "roc_auc": 0.8805,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.8492
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8324
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T18:34:51",
+    "best_model": "LogisticRegression",
+    "accuracy": 0.8492,
+    "roc_auc": 0.8805,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.8492
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8324
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T17:48:28",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T17:30:37",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T06:28:21",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T05:19:05",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "DecisionTree",
+        "accuracy": 0.8324
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      },
+      {
+        "name": "XGBoost",
+        "accuracy": 0.8156
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-12T05:12:09",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "GradientBoosting",
+        "accuracy": 0.8268
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-11T23:21:41",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "GradientBoosting",
+        "accuracy": 0.8268
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-11T23:09:30",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "GradientBoosting",
+        "accuracy": 0.8268
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-11T23:05:23",
+    "best_model": "SVM",
+    "accuracy": 0.8436,
+    "roc_auc": 0.8636,
+    "models": [
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.838
+      },
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "GradientBoosting",
+        "accuracy": 0.8268
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.8436
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-11T20:47:38",
+    "best_model": "RandomForest",
+    "accuracy": 0.8101,
+    "roc_auc": 0.8429,
+    "models": [
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.8045
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.7933
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-11T19:37:05",
+    "best_model": "RandomForest",
+    "accuracy": 0.8101,
+    "roc_auc": 0.8429,
+    "models": [
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.8045
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.7933
+      }
+    ]
+  },
+  {
+    "trained_at": "2026-07-11T19:32:17",
+    "best_model": "RandomForest",
+    "accuracy": 0.8101,
+    "roc_auc": 0.8429,
+    "models": [
+      {
+        "name": "RandomForest",
+        "accuracy": 0.8101
+      },
+      {
+        "name": "LogisticRegression",
+        "accuracy": 0.8045
+      },
+      {
+        "name": "SVM",
+        "accuracy": 0.7933
+      }
+    ]
+  }
+]

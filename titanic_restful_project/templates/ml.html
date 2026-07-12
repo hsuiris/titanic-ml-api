@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Titanic ML · 機器學習儀表板</title>
+    <link rel="stylesheet" href="/static/app.css">
+    <style>
+        /* ML 專屬樣式，其餘沿用 app.css */
+        .status { margin-top: 16px; display: none; }
+        .status.on { display: block; }
+        .progress { background: var(--bg); border-radius: 999px; height: 12px; overflow: hidden; margin-top: 8px; }
+        .progress > span { display: block; height: 100%; width: 0; background: var(--chart-blue); transition: width .4s ease; }
+        .statusmsg { font-size: 14px; color: var(--blue-deep); font-weight: 600; }
+
+        .cmp { width: 100%; border-collapse: collapse; font-size: 15px; }
+        .cmp th, .cmp td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+        .cmp th { font-size: 13px; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+        .cmp tr.best td { background: var(--blue-soft); }
+        .cmp .name { font-weight: 700; }
+        .cmp td:not(:first-child) { font-variant-numeric: tabular-nums; }
+        .params { color: var(--muted); font-size: 13.5px; white-space: normal; }
+        .tag { display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--sand-soft); color: #8a7a5c; margin-left: 6px; }
+        .tag.star { background: var(--chart-blue); color: #fff; }
+
+        .cm { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px; font-size: 13px; }
+        .cm .lab { display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); font-weight: 600; }
+        .cm .cell { border-radius: 12px; padding: 16px 8px; text-align: center; color: #fff; }
+        .cm .cell .n { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .cm .cell .t { font-size: 12px; opacity: .9; }
+
+        /* ml 頁 hero 對齊寬版 dashboard（1520），而非 index 的 1080 */
+        .hero-inner { max-width: 1520px; padding: 0 28px; }
+
+        .roc { width: 100%; max-width: 560px; height: auto; }
+        .roc .axis { stroke: #c7d2d5; stroke-width: .5; }
+        .roc .diag { stroke: var(--sand); stroke-width: .5; stroke-dasharray: 2 2; }
+        .roc .curve { fill: none; stroke: var(--chart-blue); stroke-width: 1.4; stroke-linejoin: round; }
+        .roc .albl { fill: #566065; font-size: 4px; font-weight: 600; }
+        .roc .atick { fill: var(--muted); font-size: 3.4px; }
+
+        .explain { align-self: center; font-size: 15px; line-height: 1.9; color: #34413f; }
+        .explain h4 { margin: 0 0 8px; font-size: 16px; font-weight: 800; color: var(--ink); }
+        .explain p { margin: 0 0 10px; }
+        .explain strong { color: var(--blue-deep); }
+
+        .gauge-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .gauge { position: relative; width: 190px; height: 190px; }
+        .gauge svg { transform: rotate(-90deg); }
+        .gauge .ring-bg { fill: none; stroke: var(--blue-soft); stroke-width: 16; }
+        .gauge .ring-fg { fill: none; stroke: var(--chart-blue); stroke-width: 16; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+        .gauge .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .gauge .pct { font-size: 34px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .gauge .cap { font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+        .verdict { margin-top: 12px; font-size: 20px; font-weight: 700; }
+        .verdict.pos { color: var(--pos); }
+        .verdict.neg { color: var(--neg); }
+
+        .drop { display: block; border: 1.5px dashed var(--blue); border-radius: 16px; padding: 22px; text-align: center; color: var(--muted); background: var(--blue-soft); cursor: pointer; }
+        .drop input { display: none; }
+        .filebtn { color: var(--blue-deep); font-weight: 700; text-decoration: underline; }
+        .subhead { font-weight: 800; font-size: 16px; margin: 4px 0 12px; }
+
+        /* 大數字內嵌單位 */
+        .stat .v .vu { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 6px; }
+
+        /* 特徵重要度：固定 0→niceMax 座標軸 + 格線，長度對得上數值 */
+        .impchart .irow { display: grid; grid-template-columns: 140px 1fr 60px; align-items: center; gap: 12px; font-size: 15px; margin-bottom: 10px; }
+        .impchart .ilabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .impchart .itrack { position: relative; height: 18px; border-radius: 8px; background-color: #E7EEEF; background-image: repeating-linear-gradient(to right, #d3dee0 0 1px, transparent 1px 20%); }
+        .impchart .ifill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--chart-blue); border-radius: 0 8px 8px 0; min-width: 2px; }
+        .impchart .ival { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+        .impchart .iaxis { display: grid; grid-template-columns: 140px 1fr 60px; gap: 12px; margin-top: 4px; }
+        .impchart .ticks { position: relative; height: 16px; }
+        .impchart .ticks span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+        /* 可展開的程式碼 / 數值變化 */
+        .toggle { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--blue-deep); background: none; border: none; cursor: pointer; padding: 0; }
+        .toggle:hover { text-decoration: underline; }
+        .reveal { display: none; margin-top: 12px; }
+        .reveal.on { display: block; }
+        pre.code { margin: 0; background: #17313a; color: #dfeef1; border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.7; overflow-x: auto; font-family: "SF Mono", "Menlo", "Consolas", monospace; }
+        pre.code .cm { color: #7fa6b0; }
+        pre.code .kw { color: #9ed0dd; }
+        .demo { margin-top: 12px; background: var(--blue-soft); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.9; white-space: nowrap; overflow-x: auto; }
+        .demo code { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 12.5px; }
+
+        /* 標準化小計算機 */
+        .calc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: 13.5px; }
+        .calc select, .calc input { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+        .calc input { width: 84px; }
+        .calc .out { font-weight: 800; color: var(--blue-deep); font-variant-numeric: tabular-nums; }
+
+        /* 互動式超參數試跑 */
+        .tuner { background: #17313a; color: #eaf3f5; border-radius: 18px; padding: 22px; }
+        .tuner h4 { margin: 0 0 4px; color: #fff; font-size: 16px; }
+        .tuner .lead-sub { color: #9fc2cb; font-size: 13px; margin-bottom: 16px; }
+        .tuner .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        @media (max-width: 720px) { .tuner .fields { grid-template-columns: 1fr; } }
+        .tuner .field label { color: #bcd6dc; font-size: 12.5px; }
+        .tuner .field .hint { color: #7fa6b0; font-size: 11.5px; }
+        .tuner input.grid-in { font: inherit; width: 100%; padding: 10px 12px; border: 1px solid #33565f; border-radius: 10px; background: #0f2229; color: #eaf3f5; }
+        .tuner-foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px; }
+        .tuner .combo { color: #bcd6dc; font-size: 13px; }
+        .tuner .combo b { color: #fff; }
+        .tuner .btn { background: var(--chart-blue); }
+        .tuner .btn:hover { background: #4aa0b3; }
+        .tuner .btn:disabled { background: #33565f; color: #7fa6b0; }
+        .tuner .terr { color: #f0a89f; font-size: 13px; margin-top: 12px; }
+        .recipe { background: var(--blue-soft); border-radius: 16px; padding: 20px; }
+        .recipe .rk { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+        .recipe .rrow { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px dashed var(--line); padding: 9px 0; }
+        .recipe .rrow:last-child { border-bottom: none; }
+        .recipe .rrow .v { font-weight: 800; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+
+<body>
+    <header class="hero">
+        <div class="hero-inner">
+            <div class="topbar">
+                <span class="brand">Titanic · Survival Intelligence</span>
+                <nav class="nav">
+                    <a href="/">資料管理</a>
+                    <a href="/ml" class="active">機器學習</a>
+                </nav>
+            </div>
+            <h1>Titanic <b>ML</b></h1>
+            <p>鐵達尼號生還預測的完整分析。涵蓋資料探索、特徵工程，到五種模型的訓練與調校，逐一呈現各階段的做法與結果；重要觀念於圖表旁附有說明。</p>
+        </div>
+    </header>
+
+    <div class="dash">
+        <!-- 左側：Pipeline 流程導覽 -->
+        <aside class="pipeline-nav">
+            <div class="pn-title">Pipeline</div>
+            <ol id="pnList">
+                <li><a class="pn-link" href="#s-overview"><span class="pn-num">1</span>資料概覽</a></li>
+                <li><a class="pn-link" href="#s-prep"><span class="pn-num">2</span>資料前處理</a></li>
+                <li><a class="pn-link" href="#s-fe"><span class="pn-num">3</span>特徵工程</a></li>
+                <li><a class="pn-link" href="#s-train"><span class="pn-num">4</span>模型訓練</a></li>
+                <li><a class="pn-link" href="#s-tune"><span class="pn-num">5</span>超參數調校</a></li>
+                <li><a class="pn-link" href="#s-eval"><span class="pn-num">6</span>模型評估</a></li>
+                <li><a class="pn-link" href="#s-importance"><span class="pn-num">7</span>特徵重要度</a></li>
+                <li><a class="pn-link" href="#s-predict"><span class="pn-num">8</span>預測</a></li>
+            </ol>
+        </aside>
+
+        <!-- 右側：各階段內容 -->
+        <main class="dash-main">
+
+            <!-- 1 Data Overview -->
+            <section class="card" id="s-overview">
+                <div class="stage-head"><span class="stage-num">01</span><h2>資料<b>概覽</b> <span class="en">Data Overview</span></h2></div>
+                <p class="sub">盤點資料的規模、欄位型別與缺失狀況，並檢視關鍵分布。其中性別與艙等對生還率的差距最為明顯。</p>
+                <div class="grid4" id="ovTiles"></div>
+
+                <!-- 欄位與缺失值：置中 -->
+                <div class="center-block" style="margin-top:28px">
+                    <div class="chart-title" style="text-align:center">欄位與缺失值</div>
+                    <div class="tablewrap"><table class="list-table" id="colTable"></table></div>
+                </div>
+
+                <!-- 三張分布圖同一列，之間留間隙，太窄可左右滑動 -->
+                <div class="hscroll" style="margin-top:28px">
+                    <div><div class="chart-title">年齡分布（人數）</div><div id="ovAge"></div></div>
+                    <div><div class="chart-title">各性別生還率</div><div class="hbars" id="ovSex"></div></div>
+                    <div><div class="chart-title">各艙等生還率</div><div class="hbars" id="ovClass"></div></div>
+                </div>
+            </section>
+
+            <!-- 2 Preprocessing -->
+            <section class="card" id="s-prep">
+                <div class="stage-head"><span class="stage-num">02</span><h2>資料<b>前處理</b> <span class="en">Data Preprocessing</span></h2></div>
+                <p class="sub">原始資料無法直接輸入模型。以下為實際套用的三種處理，每張卡片可展開對應程式碼，並可即時試算數值前後的變化。</p>
+                <div class="grid3">
+                    <!-- ① 缺失值 -->
+                    <div class="mini">
+                        <h4>① 缺失值填補</h4>
+                        <div class="kv" id="prepImpute"></div>
+                        <button class="toggle" onclick="toggleReveal('rvImpute', this)">&lt;/&gt; 查看程式碼與範例</button>
+                        <div class="reveal" id="rvImpute">
+                            <pre class="code"><span class="cm"># 數值用中位數、類別用眾數填補</span>
+<span class="kw">from</span> sklearn.impute <span class="kw">import</span> SimpleImputer
+num = SimpleImputer(strategy=<span class="kw">"median"</span>)
+cat = SimpleImputer(strategy=<span class="kw">"most_frequent"</span>)</pre>
+                            <div class="demo">範例：某位乘客 <code>Age = 空值</code> → 填入全體中位數 <code id="dmAge">28</code>。</div>
+                        </div>
+                    </div>
+                    <!-- ② One-Hot -->
+                    <div class="mini">
+                        <h4>② 類別編碼 One-Hot</h4>
+                        <div class="lead"><span id="prepFeatOut">—</span> 欄</div>
+                        <div class="lead-sub">「維度」指模型實際輸入的欄位數。8 個特徵中有 5 個是類別欄位，One-Hot 把每個類別值各自拆成一個 0/1 欄位後，總欄數從 8 增為 18。</div>
+                        <button class="toggle" onclick="toggleReveal('rvEnc', this)">&lt;/&gt; 查看程式碼與範例</button>
+                        <div class="reveal" id="rvEnc">
+                            <pre class="code"><span class="cm"># 把類別轉成一堆 0/1 欄位</span>
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> OneHotEncoder
+OneHotEncoder(handle_unknown=<span class="kw">"ignore"</span>)</pre>
+                            <div class="demo"><code>Sex = "female"</code> → Sex_female=1, Sex_male=0<br><code>Pclass = 3</code> → Pclass_3=1，其餘為 0</div>
+                            <div class="demo" style="margin-top:8px">維度＝3 數值欄 + Pclass(3) + Sex(2) + Embarked(3) + Title(5) + IsAlone(2) = <strong>18</strong></div>
+                        </div>
+                    </div>
+                    <!-- ③ 標準化（互動計算機）-->
+                    <div class="mini">
+                        <h4>③ 數值標準化</h4>
+                        <div class="lead">StandardScaler</div>
+                        <div class="lead-sub">套用在 Age、Fare、FamilySize</div>
+                        <div class="calc">
+                            <select id="scFeat" onchange="calcScale()"><option>Age</option><option>Fare</option><option>FamilySize</option></select>
+                            <input id="scVal" type="number" value="30" oninput="calcScale()">
+                            <span>→</span> <span class="out" id="scOut">—</span>
+                        </div>
+                        <button class="toggle" onclick="toggleReveal('rvScale', this)">&lt;/&gt; 查看程式碼</button>
+                        <div class="reveal" id="rvScale">
+                            <pre class="code"><span class="cm"># z = (x - 平均) / 標準差</span>
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> StandardScaler
+StandardScaler()</pre>
+                            <div class="demo" id="scFormula">調整上方數值，即可即時看到標準化結果。</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3 Feature Engineering -->
+            <section class="card" id="s-fe">
+                <div class="stage-head"><span class="stage-num">03</span><h2>特徵<b>工程</b> <span class="en">Feature Engineering</span></h2></div>
+                <p class="sub">從原始欄位衍生三個新特徵。下方以各類別的生還率，佐證這些特徵確實帶有生還訊號。</p>
+                <div class="hscroll">
+                    <div>
+                        <div class="subhead">Title <span class="muted" style="font-weight:400">從姓名抽出稱謂</span></div>
+                        <div class="hbars" id="feTitle"></div>
+                    </div>
+                    <div>
+                        <div class="subhead">FamilySize <span class="muted" style="font-weight:400">同行人數分組</span></div>
+                        <div class="hbars" id="feFamily"></div>
+                    </div>
+                    <div>
+                        <div class="subhead">IsAlone <span class="muted" style="font-weight:400">是否獨自搭船</span></div>
+                        <div class="hbars" id="feAlone"></div>
+                    </div>
+                </div>
+                <div class="callout" style="margin-top:22px">
+                    這三個衍生特徵都與生還率高度相關：<strong>Master（多為孩童）</strong>以及 <strong>2 到 4 人的小家庭</strong> 生還率明顯偏高，
+                    是 SibSp、Parch、Name 等原始欄位單獨無法呈現的訊號，為後續模型提供了額外的判斷依據。
+                </div>
+            </section>
+
+            <!-- 4 Model Training -->
+            <section class="card" id="s-train">
+                <div class="stage-head"><span class="stage-num">04</span><h2>模型<b>訓練</b> <span class="en">Model Training</span></h2>
+                    <button class="btn sm" id="trainBtn" style="margin-left:auto" onclick="startTrain()">🚀 一鍵訓練</button>
+                </div>
+                <p class="sub">一次訓練五種模型：Logistic Regression（baseline）、Decision Tree、Random Forest、SVM、XGBoost，每種皆以 GridSearchCV 調參，再自動挑最佳者存檔。</p>
+                <div class="status" id="trainStatus">
+                    <div class="statusmsg" id="statusMsg">準備中…</div>
+                    <div class="progress"><span id="progressBar"></span></div>
+                </div>
+                <div class="err hidden" id="trainErr"></div>
+
+                <div id="noModel" class="empty">尚未訓練模型，按右上角「一鍵訓練」開始。</div>
+                <div id="trainBody" class="hidden">
+                    <div class="grid4" id="trainTiles" style="margin-top:8px"></div>
+                    <div class="chart-title" style="margin-top:24px">四種模型比較（測試集）<span id="trainedAt" class="muted" style="float:right;font-weight:400"></span></div>
+                    <div class="tablewrap">
+                        <table class="cmp">
+                            <thead><tr><th>模型</th><th>準確率</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>CV 準確率</th></tr></thead>
+                            <tbody id="cmpBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="chart-title" style="margin-top:24px">訓練歷史</div>
+                    <div class="tablewrap">
+                        <table class="cmp">
+                            <thead><tr><th>時間</th><th>最佳模型</th><th>準確率</th><th>ROC-AUC</th><th>各模型準確率</th></tr></thead>
+                            <tbody id="historyBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="noHistory" class="empty hidden">尚無訓練紀錄。</div>
+                </div>
+            </section>
+
+            <!-- 5 Hyperparameter Tuning -->
+            <section class="card" id="s-tune">
+                <div class="stage-head"><span class="stage-num">05</span><h2>超參數<b>調校</b> <span class="en">Hyperparameter Tuning</span></h2></div>
+                <p class="sub">每個模型皆以 Grid Search 掃過參數組合、5 fold 交叉驗證挑選最穩定的一組。下方亦提供自訂搜尋範圍的即時試跑。</p>
+
+                <div class="subhead">自訂試跑：Random Forest 超參數</div>
+                <div class="grid-2-1">
+                    <div class="tuner">
+                        <h4>自訂搜尋範圍</h4>
+                        <div class="lead-sub">每格用逗號分隔多個值，Grid Search 會掃過所有組合。</div>
+                        <div class="fields">
+                            <div class="field"><label>n_estimators</label>
+                                <input class="grid-in" id="t_est" value="100, 200, 300" oninput="updateCombo()">
+                                <div class="hint">樹的數量</div></div>
+                            <div class="field"><label>max_depth</label>
+                                <input class="grid-in" id="t_depth" value="none, 5, 10" oninput="updateCombo()">
+                                <div class="hint">none 代表不限深度</div></div>
+                            <div class="field"><label>min_samples_split</label>
+                                <input class="grid-in" id="t_split" value="2, 5" oninput="updateCombo()">
+                                <div class="hint">分裂所需最小樣本數</div></div>
+                        </div>
+                        <div class="tuner-foot">
+                            <button class="btn sm" id="tuneBtn" onclick="runTune()">開始試跑 →</button>
+                            <span class="combo" id="comboInfo">共 <b>—</b> 組候選 × 5 folds</span>
+                        </div>
+                        <div class="terr hidden" id="tuneErr"></div>
+                    </div>
+                    <div class="recipe">
+                        <div class="rk">Best Recipe</div>
+                        <div id="recipeBody"><p class="muted" style="font-size:13.5px;margin-top:10px">按「開始試跑」後，此處顯示該組搜尋範圍得到的最佳參數與 CV 分數。</p></div>
+                    </div>
+                </div>
+
+                <div class="subhead" style="margin-top:28px">這次訓練的完整結果</div>
+                <div id="noTune" class="empty">訓練後顯示。</div>
+                <div id="tuneBody" class="hidden">
+                    <div class="grid3" id="tuneTiles"></div>
+                    <div class="tablewrap" style="margin-top:22px">
+                        <table class="cmp">
+                            <thead><tr><th>模型</th><th>搜尋組合數</th><th>最佳超參數</th><th>最佳 CV 分數</th><th>耗時</th></tr></thead>
+                            <tbody id="tuneBodyRows"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6 Model Evaluation -->
+            <section class="card" id="s-eval">
+                <div class="stage-head"><span class="stage-num">06</span><h2>模型<b>評估</b> <span class="en">Model Evaluation</span></h2></div>
+                <p class="sub">最佳模型在測試集上的完整評估指標。</p>
+                <div id="noEval" class="empty">訓練後顯示。</div>
+                <div id="evalBody" class="hidden">
+                    <div class="grid5" id="bestMetrics"></div>
+                    <div class="grid2" style="margin-top:24px">
+                        <div>
+                            <div class="chart-title">混淆矩陣（測試集）</div>
+                            <div class="cm" id="confusion"></div>
+                        </div>
+                        <div class="explain">
+                            <h4>混淆矩陣怎麼讀</h4>
+                            <p>將模型在測試集上的判斷對錯攤開檢視。<strong>左上、右下為正確</strong>（實際未生還判為未生還、實際生還判為生還）；右上為「<strong>誤判生還</strong>」（實際未生還卻判為生還），左下為「<strong>漏判</strong>」（實際生還卻判為未生還）。對角線數字越集中，準確率越高。</p>
+                            <p id="cmData"></p>
+                        </div>
+                    </div>
+                    <div class="grid2" style="margin-top:24px">
+                        <div>
+                            <div class="chart-title">ROC 曲線</div>
+                            <svg class="roc" viewBox="0 0 112 118" id="rocSvg"></svg>
+                        </div>
+                        <div class="explain">
+                            <h4>ROC 曲線怎麼讀</h4>
+                            <p>橫軸為<strong>誤判率</strong>（實際未生還被判為生還的比例），縱軸為<strong>召回率</strong>（實際生還被正確判出的比例）。曲線<strong>越靠近左上角</strong>越好，對角虛線代表隨機猜測的基準。</p>
+                            <p id="rocData"></p>
+                        </div>
+                    </div>
+
+                    <div class="subhead" style="margin-top:28px">特徵工程消融對照 <span class="muted" style="font-weight:400">Ablation</span></div>
+                    <p class="sub" id="ablDesc"></p>
+                    <div class="grid3">
+                        <div class="mini"><h4>加入特徵工程</h4><div class="lead" id="ablWith">—</div><div class="lead-sub" id="ablWithSub"></div></div>
+                        <div class="mini"><h4>未做特徵工程</h4><div class="lead" id="ablWithout">—</div><div class="lead-sub" id="ablWithoutSub"></div></div>
+                        <div class="mini"><h4>準確率提升</h4><div class="lead" id="ablDelta" style="color:var(--blue-deep)">—</div><div class="lead-sub">特徵工程帶來的差異</div></div>
+                    </div>
+                    <p class="muted" style="font-size:13px;margin-top:14px">對照方式：固定最佳模型與相同的訓練／測試切分，僅切換是否使用衍生特徵（Title、FamilySize、IsAlone），兩邊各自重新用 GridSearch 調參後，在同一測試集上比較。</p>
+                </div>
+            </section>
+
+            <!-- 7 Feature Importance -->
+            <section class="card" id="s-importance">
+                <div class="stage-head"><span class="stage-num">07</span><h2>特徵<b>重要度</b> <span class="en">Feature Importance</span></h2></div>
+                <p class="sub">最佳模型中，各特徵對預測生還的貢獻程度（相對重要度，數值加總約為 1）。</p>
+                <div id="noImp" class="empty">訓練後顯示。</div>
+                <div id="impBody" class="hidden">
+                    <div class="hbars" id="importance"></div>
+                    <p class="muted" style="font-size:13px;margin-top:14px">數值是<strong style="color:var(--blue-deep)">相對重要度</strong>（已正規化，全部特徵加起來約為 1，所以每個值大致代表它的佔比）。來源是模型內建的重要度：樹模型用 feature_importances_、線性模型用係數絕對值。像 SHAP 這類更進階的解釋方法可作為後續延伸。</p>
+                </div>
+            </section>
+
+            <!-- 8 Prediction -->
+            <section class="card" id="s-predict">
+                <div class="stage-head"><span class="stage-num">08</span><h2><b>預測</b> <span class="en">Prediction / Deployment</span></h2></div>
+                <p class="sub">訓練好的模型存成檔案後，這個網站本身就是部署：可以單筆輸入或上傳 CSV 批次預測。</p>
+
+                <div class="subhead" style="margin-top:8px">單筆預測</div>
+                <div class="grid2">
+                    <div>
+                        <div class="form-grid">
+                            <div class="field"><label>艙等 Pclass</label>
+                                <select id="f_Pclass"><option value="1">1 · 頭等</option><option value="2">2 · 二等</option><option value="3" selected>3 · 三等</option></select></div>
+                            <div class="field"><label>性別 Sex</label>
+                                <select id="f_Sex"><option value="male">male</option><option value="female">female</option></select></div>
+                            <div class="field"><label>稱謂 Title</label>
+                                <select id="f_Title"><option value="Mr" selected>Mr</option><option value="Mrs">Mrs</option><option value="Miss">Miss</option><option value="Master">Master</option><option value="Rare">Rare（其他）</option></select></div>
+                            <div class="field"><label>年齡 Age</label><input id="f_Age" type="number" step="0.5" value="30"></div>
+                            <div class="field"><label>票價 Fare</label><input id="f_Fare" type="number" step="0.01" value="32"></div>
+                            <div class="field"><label>登船港 Embarked</label>
+                                <select id="f_Embarked"><option value="S" selected>S · Southampton</option><option value="C">C · Cherbourg</option><option value="Q">Q · Queenstown</option></select></div>
+                            <div class="field"><label>同行手足/配偶 SibSp</label><input id="f_SibSp" type="number" value="0"></div>
+                            <div class="field"><label>同行父母/子女 Parch</label><input id="f_Parch" type="number" value="0"></div>
+                        </div>
+                        <button class="btn" id="predictBtn" style="margin-top:16px" onclick="predictOne()">預測生還機率</button>
+                        <div class="err hidden" id="predictErr"></div>
+                    </div>
+                    <div class="gauge-wrap" id="gaugeWrap">
+                        <div class="gauge">
+                            <svg width="190" height="190" viewBox="0 0 190 190">
+                                <circle class="ring-bg" cx="95" cy="95" r="80"></circle>
+                                <circle class="ring-fg" cx="95" cy="95" r="80" id="ring"
+                                    stroke-dasharray="502.6" stroke-dashoffset="502.6"></circle>
+                            </svg>
+                            <div class="center">
+                                <div class="pct" id="gaugePct">…</div>
+                                <div class="cap">生存機率</div>
+                            </div>
+                        </div>
+                        <div class="verdict" id="verdict">尚未預測</div>
+                    </div>
+                </div>
+
+                <div class="subhead" style="margin-top:28px">批次預測</div>
+                <p class="sub">上傳含 Pclass, Sex, Age, SibSp, Parch, Fare, Embarked 欄位的 CSV（有 Name 欄位會自動抽出 Title）。</p>
+                <label class="drop">
+                    <input type="file" id="csvFile" accept=".csv" onchange="predictBatch()">
+                    點此或拖曳選擇 <span class="filebtn">CSV 檔案</span>
+                </label>
+                <div class="err hidden" id="batchErr"></div>
+                <div class="row-between hidden" id="batchHead" style="margin-top:16px">
+                    <span class="muted" id="batchCount"></span>
+                    <button class="btn ghost sm" onclick="downloadBatch()">下載結果 CSV</button>
+                </div>
+                <div class="tablewrap"><table class="list-table hidden" id="batchTable"></table></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+        const pct = x => (x * 100).toFixed(1) + "%";
+        // k=標題, v=大數字, u=內嵌單位(接在數字後), cap=下方說明, sand=暖色
+        const tile = (k, v, u = "", cap = "", sand = false) => `<div class="stat ${sand ? 'sand' : ''}">
+            <div class="k">${k}</div>
+            <div class="v">${v}${u ? `<span class="vu">${u}</span>` : ''}</div>
+            ${cap ? `<div class="u">${cap}</div>` : ''}</div>`;
+        const hbar = (label, ratio, valueText) => `<div class="hbar" title="${label}：${valueText}">
+            <span>${label}</span>
+            <span class="track"><span class="fill" style="width:${(ratio * 100).toFixed(1)}%"></span></span>
+            <span class="val">${valueText}</span></div>`;
+
+        // ============ 1-3 資料概覽 / 前處理 / 特徵工程 ============
+        async function loadStats() {
+            const s = await (await fetch("/api/stats")).json();
+
+            // 01 概覽
+            $("ovTiles").innerHTML =
+                tile("資料筆數", s.n_rows, "位乘客") +
+                tile("欄位數", s.n_cols, "個欄位") +
+                tile("生還人數", s.survived, "位", "", true) +
+                tile("整體生還率", pct(s.survival_rate), "");
+            $("colTable").innerHTML =
+                "<thead><tr><th>欄位</th><th>型別</th><th>缺失數</th><th>缺失比例</th></tr></thead><tbody>" +
+                s.columns.map(c => `<tr><td>${c.name}</td><td class="muted">${c.dtype}</td>
+                    <td>${c.missing}</td><td>${c.missing > 0
+                        ? `<span class="chip neg">${c.missing_pct}%</span>`
+                        : `<span class="chip pos">0%</span>`}</td></tr>`).join("") +
+                "</tbody>";
+            renderHistogram("ovAge", s.age_hist);
+            $("ovSex").innerHTML = s.by_sex.map(d => hbar(d.key, d.rate, pct(d.rate))).join("");
+            $("ovClass").innerHTML = s.by_pclass.map(d => hbar(d.key + " 等艙", d.rate, pct(d.rate))).join("");
+
+            // 02 前處理
+            $("prepImpute").innerHTML = `
+                <div class="row"><span class="k">Age（缺 177 筆）</span><span class="v">中位數 ${s.impute.Age_median}</span></div>
+                <div class="row"><span class="k">Embarked（缺 2 筆）</span><span class="v">眾數 ${s.impute.Embarked_mode}</span></div>
+                <div class="row"><span class="k">Fare（若缺）</span><span class="v">中位數 ${s.impute.Fare_median}</span></div>
+                <div class="row"><span class="k">Cabin（缺 687 筆）</span><span class="v">整欄捨棄</span></div>`;
+            $("prepFeatOut").textContent = `8 → ${s.n_features_out}`;
+            $("dmAge").textContent = s.impute.Age_median;
+            window._scaler = s.scaler;      // 給標準化計算機用
+            calcScale();
+
+            // 03 特徵工程
+            $("feTitle").innerHTML = s.fe.by_title.map(d => hbar(d.key, d.rate, pct(d.rate))).join("");
+            $("feFamily").innerHTML = s.fe.by_family.map(d => hbar(d.key, d.rate, pct(d.rate))).join("");
+            $("feAlone").innerHTML = s.fe.by_isalone.map(d =>
+                hbar(d.key === "1" ? "獨自一人" : "有同伴", d.rate, pct(d.rate))).join("");
+        }
+
+        function renderHistogram(id, items) {
+            const max = Math.max(...items.map(d => d.count)) || 1;
+            const cols = items.map(d => `<div class="col" title="${d.label} 歲：${d.count} 人">
+                <span class="coln">${d.count}</span>
+                <span class="colbar" style="height:${(d.count / max * 100).toFixed(1)}%"></span></div>`).join("");
+            const labels = items.map(d => `<span>${d.label}</span>`).join("");
+            $(id).innerHTML = `<div class="cols">${cols}</div><div class="colx">${labels}</div>`;
+        }
+
+        // ============ 4-7 模型相關（訓練後或載入既有模型時渲染）============
+        function renderModel(meta) {
+            ["noModel", "noTune", "noEval", "noImp"].forEach(x => $(x).classList.add("hidden"));
+            ["trainBody", "tuneBody", "evalBody", "impBody"].forEach(x => $(x).classList.remove("hidden"));
+
+            const b = meta.best;
+
+            // 04 訓練摘要 + 比較表
+            $("trainTiles").innerHTML =
+                tile("最佳模型", meta.best_model, "") +
+                tile("測試準確率", pct(b.metrics.accuracy), "", "", true) +
+                tile("Train / Test", `${meta.n_train}/${meta.n_test}`, "筆") +
+                tile("訓練耗時", meta.total_seconds, "s", `${meta.results.length} 個模型合計`);
+            $("trainedAt").textContent = "訓練於 " + meta.trained_at;
+            $("cmpBody").innerHTML = meta.results.map(r => {
+                const best = r.name === meta.best_model, m = r.metrics;
+                return `<tr class="${best ? 'best' : ''}">
+                    <td class="name">${r.name}${r.is_baseline ? '<span class="tag">baseline</span>' : ''}${best ? '<span class="tag star">⭐ 最佳</span>' : ''}</td>
+                    <td>${m.accuracy}</td><td>${m.precision}</td><td>${m.recall}</td>
+                    <td>${m.f1}</td><td>${m.roc_auc}</td><td>${r.cv_accuracy}</td></tr>`;
+            }).join("");
+
+            // 05 超參數
+            const totalCand = meta.results.reduce((s, r) => s + r.n_candidates, 0);
+            $("tuneTiles").innerHTML =
+                tile("搜尋方法", meta.search_method, "", "掃過所有組合") +
+                tile("交叉驗證", meta.cv_folds, "fold", "cross validation") +
+                tile("候選組合", totalCand, "組", "五種模型合計", true);
+            $("tuneBodyRows").innerHTML = meta.results.map(r => {
+                const best = r.name === meta.best_model;
+                const params = Object.entries(r.best_params).map(([k, v]) => `${k}=${v === null ? 'None' : v}`).join(", ");
+                return `<tr class="${best ? 'best' : ''}">
+                    <td class="name">${r.name}${best ? '<span class="tag star">⭐</span>' : ''}</td>
+                    <td>${r.n_candidates} 組</td>
+                    <td class="params">${params}</td>
+                    <td>${r.cv_accuracy}</td>
+                    <td>${r.fit_seconds} s</td></tr>`;
+            }).join("");
+
+            // 06 評估
+            $("bestMetrics").innerHTML =
+                tile("準確率", b.metrics.accuracy, "", "Accuracy") +
+                tile("精確率", b.metrics.precision, "", "Precision") +
+                tile("召回率", b.metrics.recall, "", "Recall") +
+                tile("F1", b.metrics.f1, "", "F1-score") +
+                tile("ROC-AUC", b.metrics.roc_auc, "", "越接近 1 越好", true);
+            renderConfusion(b.confusion_matrix);
+            renderRoc(b.roc_curve);
+            renderMetricNotes(b);
+
+            // 06b 特徵工程消融對照
+            if (meta.ablation) {
+                const a = meta.ablation;
+                $("ablDesc").textContent = `固定最佳模型 ${a.model}，在相同的訓練／測試切分上，比較有無特徵工程的差異。`;
+                $("ablWith").textContent = pct(a.with_fe);
+                $("ablWithSub").textContent = `${a.n_features_fe} 個輸入欄位（含衍生特徵）`;
+                $("ablWithout").textContent = pct(a.without_fe);
+                $("ablWithoutSub").textContent = `${a.n_features_raw} 個輸入欄位（僅原始欄位）`;
+                $("ablDelta").textContent = (a.delta >= 0 ? "+" : "") + (a.delta * 100).toFixed(1) + "%";
+            }
+
+            // 07 特徵重要度
+            renderImportance(b.feature_importance);
+        }
+
+        function renderMetricNotes(b) {
+            const [[tn, fp], [fn, tp]] = b.confusion_matrix;
+            const total = tn + fp + fn + tp, correct = tn + tp;
+            const lean = b.metrics.recall < b.metrics.precision
+                ? `代表模型判為生還時通常準確（Precision <strong>${b.metrics.precision}</strong>），但真正的生還者未能全數抓出（Recall <strong>${b.metrics.recall}</strong>），判斷偏保守。`
+                : `代表模型能抓出多數生還者（Recall <strong>${b.metrics.recall}</strong>），但判為生還時的準確度（Precision <strong>${b.metrics.precision}</strong>）略低。`;
+            $("cmData").innerHTML =
+                `以本次最佳模型 ${b.name} 為例：測試集共 <strong>${total}</strong> 人，正確判斷 <strong>${correct}</strong> 人，` +
+                `其中誤判生還 <strong>${fp}</strong> 例、漏判 <strong>${fn}</strong> 例。${lean}`;
+            const auc = b.metrics.roc_auc;
+            $("rocData").innerHTML =
+                `曲線明顯靠向左上角，曲線下面積 ROC-AUC 為 <strong>${auc}</strong>。` +
+                `意義：任取一位真實生還者與一位罹難者，模型有 <strong>${(auc * 100).toFixed(0)}%</strong> 的機率給生還者較高的分數；0.5 等同隨機猜測。`;
+        }
+
+        function renderConfusion(cm) {
+            const [[tn, fp], [fn, tp]] = cm;
+            const cell = (n, t, c) => `<div class="cell" style="background:${c}"><div class="n">${n}</div><div class="t">${t}</div></div>`;
+            $("confusion").innerHTML = `
+                <div class="lab"></div><div class="lab">預測 未生還</div><div class="lab">預測 生還</div>
+                <div class="lab">實際<br>未生還</div>${cell(tn, "正確", "#8fb0b8")}${cell(fp, "誤判生還", "#d8cbb2")}
+                <div class="lab">實際<br>生還</div>${cell(fn, "漏判", "#d8cbb2")}${cell(tp, "正確", "#2C7C8C")}`;
+        }
+
+        function renderRoc(points) {
+            const X0 = 16, Y1 = 96, S = 90;          // 座標原點(左下)在 (16,96)，繪圖區邊長 90
+            const map = (fpr, tpr) => `${(X0 + fpr * S).toFixed(2)},${(Y1 - tpr * S).toFixed(2)}`;
+            const poly = points.map(p => map(p[0], p[1])).join(" ");
+            $("rocSvg").innerHTML = `
+                <line class="axis" x1="${X0}" y1="6" x2="${X0}" y2="${Y1}"></line>
+                <line class="axis" x1="${X0}" y1="${Y1}" x2="${X0 + S}" y2="${Y1}"></line>
+                <line class="diag" x1="${X0}" y1="${Y1}" x2="${X0 + S}" y2="6"></line>
+                <polyline class="curve" points="${poly}"></polyline>
+                <text class="atick" x="${X0}" y="101" text-anchor="middle">0</text>
+                <text class="atick" x="${X0 + S / 2}" y="101" text-anchor="middle">0.5</text>
+                <text class="atick" x="${X0 + S}" y="101" text-anchor="middle">1</text>
+                <text class="atick" x="13" y="${Y1 + 1.2}" text-anchor="end">0</text>
+                <text class="atick" x="13" y="${Y1 - S / 2 + 1.2}" text-anchor="end">0.5</text>
+                <text class="atick" x="13" y="9" text-anchor="end">1</text>
+                <text class="albl" x="${X0 + S / 2}" y="113" text-anchor="middle">假陽性率 FPR（誤判率）</text>
+                <text class="albl" transform="translate(7,${Y1 - S / 2}) rotate(-90)" text-anchor="middle">真陽性率 TPR（召回率）</text>`;
+        }
+
+        function renderImportance(imp) {
+            if (!imp || !imp.length) { $("importance").innerHTML = '<div class="empty">此模型不提供特徵重要度（例如 rbf 核的 SVM）。</div>'; return; }
+            const maxV = Math.max(...imp.map(d => d.value));
+            const niceMax = Math.max(0.05, Math.ceil(maxV / 0.05) * 0.05);   // 座標軸上界取到 0.05 的倍數
+            const rows = imp.map(d => `<div class="irow" title="${d.feature}：${d.value}">
+                <span class="ilabel">${d.feature}</span>
+                <span class="itrack"><span class="ifill" style="width:${(d.value / niceMax * 100).toFixed(1)}%"></span></span>
+                <span class="ival">${d.value}</span></div>`).join("");
+            let ticks = "";
+            for (let i = 0; i <= 5; i++) ticks += `<span style="left:${i * 20}%">${(niceMax * i / 5).toFixed(2)}</span>`;
+            $("importance").innerHTML = `<div class="impchart">${rows}
+                <div class="iaxis"><span></span><div class="ticks">${ticks}</div><span></span></div></div>`;
+        }
+
+        // ============ 訓練 ============
+        let pollTimer = null;
+        async function startTrain() {
+            $("trainErr").classList.add("hidden");
+            $("trainStatus").classList.add("on");
+            $("trainBtn").disabled = true;
+            $("statusMsg").textContent = "送出訓練請求…";
+            const r = await fetch("/api/train", { method: "POST" });
+            if (!r.ok && r.status !== 409) { showTrainErr("無法啟動訓練"); return; }
+            pollTimer = setInterval(pollStatus, 1200);
+        }
+        async function pollStatus() {
+            const st = await (await fetch("/api/train/status")).json();
+            const total = st.total || 5, cur = st.current || 0;
+            if (st.status === "training") {
+                $("statusMsg").textContent = `${st.progress || "訓練中…"}（${cur}/${total}）`;
+                $("progressBar").style.width = Math.max(0, (cur - 0.5) / total * 100).toFixed(0) + "%";
+            } else if (st.status === "done") {
+                clearInterval(pollTimer);
+                $("statusMsg").textContent = "✅ 訓練完成";
+                $("progressBar").style.width = "100%";
+                $("trainBtn").disabled = false;
+                renderModel(st.meta);
+                loadHistory();
+                setTimeout(() => $("trainStatus").classList.remove("on"), 2500);
+            } else if (st.status === "error") {
+                clearInterval(pollTimer);
+                showTrainErr("訓練失敗：" + st.progress);
+            }
+        }
+        function showTrainErr(msg) {
+            clearInterval(pollTimer);
+            $("trainBtn").disabled = false;
+            $("trainStatus").classList.remove("on");
+            const e = $("trainErr"); e.textContent = msg; e.classList.remove("hidden");
+        }
+
+        async function loadHistory() {
+            const { items } = await (await fetch("/api/history")).json();
+            if (!items.length) { $("noHistory").classList.remove("hidden"); return; }
+            $("noHistory").classList.add("hidden");
+            $("historyBody").innerHTML = items.map(h => `<tr>
+                <td>${h.trained_at.replace("T", " ")}</td>
+                <td class="name">${h.best_model}</td>
+                <td>${h.accuracy}</td><td>${h.roc_auc}</td>
+                <td class="params">${h.models.map(m => `${m.name} ${m.accuracy}`).join(" · ")}</td></tr>`).join("");
+        }
+
+        // ============ 8 預測 ============
+        async function predictOne() {
+            $("predictErr").classList.add("hidden");
+            const rec = {
+                Pclass: $("f_Pclass").value, Sex: $("f_Sex").value, Title: $("f_Title").value,
+                Age: $("f_Age").value, Fare: $("f_Fare").value,
+                SibSp: $("f_SibSp").value, Parch: $("f_Parch").value, Embarked: $("f_Embarked").value
+            };
+            const r = await fetch("/api/predict", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec)
+            });
+            const data = await r.json();
+            if (!r.ok) { const e = $("predictErr"); e.textContent = data.error || "預測失敗"; e.classList.remove("hidden"); return; }
+            const C = 2 * Math.PI * 80;
+            $("ring").style.strokeDashoffset = C * (1 - data.probability);
+            $("gaugePct").textContent = pct(data.probability);
+            const v = $("verdict");
+            v.textContent = data.survived ? "預測：生還 ✓" : "預測：未生還";
+            v.className = "verdict " + (data.survived ? "pos" : "neg");
+        }
+
+        let batchData = null;
+        async function predictBatch() {
+            const f = $("csvFile").files[0];
+            if (!f) return;
+            $("batchErr").classList.add("hidden");
+            const fd = new FormData(); fd.append("file", f);
+            const r = await fetch("/api/predict/batch", { method: "POST", body: fd });
+            const data = await r.json();
+            if (!r.ok) { const e = $("batchErr"); e.textContent = data.error || "批次預測失敗"; e.classList.remove("hidden"); return; }
+            batchData = data;
+            renderBatch(data);
+        }
+        function renderBatch(data) {
+            const cols = data.columns, t = $("batchTable");
+            const head = "<thead><tr>" + cols.map(c => `<th>${c}</th>`).join("") + "</tr></thead>";
+            const rows = data.items.slice(0, 200).map(row => "<tr>" + cols.map(c => {
+                if (c === "Survived_pred") return `<td><span class="chip ${row[c] ? 'pos' : 'neg'}">${row[c] ? '生還' : '未生還'}</span></td>`;
+                if (c === "Survival_probability") return `<td>${pct(row[c])}</td>`;
+                return `<td>${row[c] ?? ""}</td>`;
+            }).join("") + "</tr>").join("");
+            t.innerHTML = head + "<tbody>" + rows + "</tbody>";
+            t.classList.remove("hidden");
+            $("batchHead").classList.remove("hidden");
+            $("batchCount").textContent = `共 ${data.items.length} 筆` +
+                (data.items.length > 200 ? "（表格僅顯示前 200 筆，下載檔為完整）" : "");
+        }
+        function downloadBatch() {
+            if (!batchData) return;
+            const cols = batchData.columns, esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+            const csv = [cols.join(",")].concat(batchData.items.map(row => cols.map(c => esc(row[c])).join(","))).join("\n");
+            const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+            const a = document.createElement("a");
+            a.href = url; a.download = "titanic_predictions.csv"; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ============ 前處理互動：展開程式碼 / 標準化計算機 ============
+        function toggleReveal(id, btn) {
+            const el = $(id), on = el.classList.toggle("on");
+            btn.innerHTML = (on ? "− 收合" : "&lt;/&gt; 查看程式碼與範例");
+        }
+        function calcScale() {
+            if (!window._scaler) return;
+            const feat = $("scFeat").value, x = parseFloat($("scVal").value);
+            const st = window._scaler[feat];
+            if (!st || isNaN(x)) { $("scOut").textContent = "—"; return; }
+            const z = (x - st.mean) / st.std;
+            $("scOut").textContent = "z = " + z.toFixed(2);
+            $("scFormula").innerHTML =
+                `<code>${feat} = ${x}</code> → (${x} − 平均 ${st.mean}) / 標準差 ${st.std} = <strong>${z.toFixed(2)}</strong>`;
+        }
+
+        // ============ 5 超參數：互動式試跑 ============
+        function parseGrid(id) {
+            return $(id).value.split(",").map(s => s.trim()).filter(s => s !== "").map(s => {
+                if (/^(none|null)$/i.test(s)) return null;
+                const n = Number(s);
+                return isNaN(n) ? s : n;
+            });
+        }
+        function updateCombo() {
+            const est = parseGrid("t_est"), depth = parseGrid("t_depth"), split = parseGrid("t_split");
+            const n = est.length * depth.length * split.length;
+            $("comboInfo").innerHTML = `共 <b>${n}</b> 組候選 × 5 folds`;
+            const bad = n === 0 || n > 60;
+            $("tuneBtn").disabled = bad;
+            const e = $("tuneErr");
+            if (n > 60) { e.textContent = `組合數 ${n} 超過上限 60 組，請減少一些值。`; e.classList.remove("hidden"); }
+            else if (n === 0) { e.textContent = "每格至少要有一個值。"; e.classList.remove("hidden"); }
+            else e.classList.add("hidden");
+            return { est, depth, split, n };
+        }
+        async function runTune() {
+            const g = updateCombo();
+            if (g.n === 0 || g.n > 60) return;
+            $("tuneBtn").disabled = true;
+            $("recipeBody").innerHTML = `<p class="muted" style="font-size:13.5px;margin-top:10px">試跑中… 掃 ${g.n} 組 × 5 folds</p>`;
+            try {
+                const r = await fetch("/api/tune", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: "RandomForest", grid: { n_estimators: g.est, max_depth: g.depth, min_samples_split: g.split } })
+                });
+                const d = await r.json();
+                if (!r.ok) { $("recipeBody").innerHTML = `<p class="terr" style="color:#b5524a;margin-top:10px">${d.error || "試跑失敗"}</p>`; return; }
+                const rows = Object.entries(d.best_params).map(([k, v]) =>
+                    `<div class="rrow"><span class="muted">${k}</span><span class="v">${v === null ? 'None' : v}</span></div>`).join("");
+                $("recipeBody").innerHTML = rows +
+                    `<div class="rrow"><span class="muted">最佳 CV 準確率</span><span class="v" style="color:var(--blue-deep)">${pct(d.cv_accuracy)}</span></div>` +
+                    `<p class="muted" style="font-size:12.5px;margin-top:12px">掃 ${d.n_candidates} 組 × ${d.cv_folds} folds，耗時 ${d.fit_seconds}s。此試跑不會覆蓋已存檔的最佳模型。</p>`;
+            } finally {
+                $("tuneBtn").disabled = false;
+                updateCombo();
+            }
+        }
+
+        // ============ Pipeline 導覽：scrollspy ============
+        function initScrollSpy() {
+            const links = Array.from(document.querySelectorAll(".pn-link"));
+            const map = {};
+            links.forEach(a => map[a.getAttribute("href").slice(1)] = a);
+            const obs = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        links.forEach(a => a.classList.remove("active"));
+                        map[e.target.id]?.classList.add("active");
+                    }
+                });
+            }, { rootMargin: "-20% 0px -70% 0px", threshold: 0 });
+            document.querySelectorAll(".dash-main section").forEach(s => obs.observe(s));
+        }
+
+        // ============ 初始載入 ============
+        async function init() {
+            loadStats();
+            loadHistory();
+            initScrollSpy();
+            updateCombo();
+            const info = await (await fetch("/api/model/info")).json();
+            if (info.trained) renderModel(info);
+        }
+        init();
+    </script>
+</body>
+
+</html>

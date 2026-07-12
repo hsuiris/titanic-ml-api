@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>新增乘客</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+
+<body>
+    <header class="hero">
+        <div class="hero-inner">
+            <div class="topbar">
+                <span class="brand">Titanic · Survival Intelligence</span>
+                <nav class="nav">
+                    <a href="/">資料管理</a>
+                    <a href="/ml">機器學習</a>
+                </nav>
+            </div>
+            <h1>New <b>Passenger</b></h1>
+            <p>建立一筆新的乘客紀錄。</p>
+        </div>
+    </header>
+
+    <div class="wrap">
+        <section class="card">
+            <form id="passengerForm" class="form-grid">
+                <div class="field"><label>是否生還 Survived</label>
+                    <select name="Survived" required>
+                        <option value="0">0 · 未生還</option>
+                        <option value="1">1 · 生還</option>
+                    </select></div>
+                <div class="field"><label>艙等 Pclass</label>
+                    <select name="Pclass" required>
+                        <option value="1">1 · 頭等</option>
+                        <option value="2">2 · 二等</option>
+                        <option value="3">3 · 三等</option>
+                    </select></div>
+                <div class="field full"><label>姓名 Name</label><input name="Name" required></div>
+                <div class="field"><label>性別 Sex</label>
+                    <select name="Sex" required><option value="male">male</option><option value="female">female</option></select></div>
+                <div class="field"><label>年齡 Age</label><input name="Age" type="number" step="0.01" placeholder="可留空"></div>
+                <div class="field"><label>同行手足/配偶 SibSp</label><input name="SibSp" type="number" min="0" value="0" required></div>
+                <div class="field"><label>同行父母/子女 Parch</label><input name="Parch" type="number" min="0" value="0" required></div>
+                <div class="field"><label>船票號碼 Ticket</label><input name="Ticket" required></div>
+                <div class="field"><label>票價 Fare</label><input name="Fare" type="number" step="0.0001" min="0" value="0" required></div>
+                <div class="field"><label>船艙 Cabin</label><input name="Cabin" placeholder="可留空"></div>
+                <div class="field"><label>登船港 Embarked</label>
+                    <select name="Embarked"><option value="">未知</option><option value="C">C · Cherbourg</option><option value="Q">Q · Queenstown</option><option value="S">S · Southampton</option></select></div>
+                <div class="field full actions" style="margin-top:8px">
+                    <button class="btn" type="submit">新增</button>
+                    <a href="/">取消</a>
+                    <span class="err hidden" id="errMsg"></span>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script>
+        document.getElementById("passengerForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const payload = Object.fromEntries(fd.entries());
+            // 型別轉換：後端存的是數值
+            payload.Survived = Number(payload.Survived);
+            payload.Pclass = Number(payload.Pclass);
+            payload.SibSp = Number(payload.SibSp);
+            payload.Parch = Number(payload.Parch);
+            payload.Fare = Number(payload.Fare);
+            payload.Age = payload.Age === "" ? null : Number(payload.Age);
+            payload.Cabin = payload.Cabin || null;
+            payload.Embarked = payload.Embarked || null;
+
+            const r = await fetch("/api/passengers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await r.json();
+            if (!r.ok) {
+                const el = document.getElementById("errMsg");
+                el.textContent = data.error || "新增失敗，請檢查欄位";
+                el.classList.remove("hidden");
+                return;
+            }
+            window.location.href = "/";
+        });
+    </script>
+</body>
+
+</html>
