@@ -115,6 +115,9 @@ y_prob = model.predict_proba(X_test)
 
 ![資料管理](titanic_restful_project/doc/images/data_management.png)
 
+介紹影片：https://www.youtube.com/watch?v=rOpdVcMcVQc
+
+
 ## 其它
 
 - 所有圖表以原生 SVG 與 CSS 繪製，無外部圖表套件，離線亦可運作。
