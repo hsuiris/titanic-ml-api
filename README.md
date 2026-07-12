@@ -103,7 +103,7 @@ y_prob = model.predict_proba(X_test)
 
 超參數調校頁面提供互動式試跑，可自訂 Random Forest 的搜尋範圍（n_estimators、max_depth、min_samples_split）即時重跑並比較最佳組合。
 
-完整技術說明見 `titanic_restful_project/doc/說明文件.md`；口頭導覽講稿見 `titanic_restful_project/doc/講稿.md`。
+完整技術說明見 `titanic_restful_project/doc/說明文件.md`
 
 ## 成果
 
